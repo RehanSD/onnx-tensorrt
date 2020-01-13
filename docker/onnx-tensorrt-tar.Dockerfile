@@ -1,5 +1,5 @@
-FROM nvcr.io/nvidia/cuda:10.1-cudnn7-devel-ubuntu18.04
-ARG TENSORRT_VERSION=6.0.1.5
+FROM nvcr.io/nvidia/cuda:10.2-cudnn7-devel-ubuntu18.04
+ARG TENSORRT_VERSION=7.0.0.11
 ARG PY3_VERSION=36
 
 # Install package dependencies
@@ -22,16 +22,26 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python3-setuptools \
         libprotobuf-dev \
         protobuf-compiler \
-        cmake \
         swig \
     && rm -rf /var/lib/apt/lists/*
-
+    
+RUN apt purge --auto-remove cmake
+WORKDIR /tmp
+RUN wget https://github.com/Kitware/CMake/releases/download/v3.16.2/cmake-3.16.2.tar.gz && \
+    tar -xzvf cmake-3.16.2.tar.gz && \
+    cd cmake-3.16.2/ && \
+    ./bootstrap && \
+    make -j$(nproc) && \
+    make install
+RUN ln -s /usr/bin/python3 /usr/bin/python
+WORKDIR /
+RUN rm -rf /tmp
 
 WORKDIR /opt/onnx-tensorrt
 COPY . .
 
 # Install TensorRT
-RUN tar -xvf TensorRT-${TENSORRT_VERSION}.*.tar.gz && \
+RUN tar -xvf TensorRT-${TENSORRT_VERSION}.tar.gz && \
     cd TensorRT-${TENSORRT_VERSION}/ && \
     cp lib/lib* /usr/lib/x86_64-linux-gnu/ && \
     rm /usr/lib/x86_64-linux-gnu/libnv*.a && \
